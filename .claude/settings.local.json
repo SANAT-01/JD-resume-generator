@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /private/tmp/claude-501/-Users-sanattudu-Work-JD---Resume-/28379dd7-b5d4-4c5d-bb74-cb38860ca68f/scratchpad)",
+      "Bash(python3 -c ' *)",
+      "Bash(npm -v)",
+      "Bash(npx --yes create-next-app@latest job-app-frontend --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack --use-npm)",
+      "Read(//Users/sanattudu/Work/JD & Resume /job-app-frontend/**)",
+      "Read(//Users/sanattudu/Work/JD & Resume\\\\ /**)",
+      "Bash(npm run *)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(pkill -f \"job-app-frontend\")",
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs kill -9)",
+      "Read(//Users/sanattudu/Work/JD & Resume /src/app/**)",
+      "Bash(npx eslint *)",
+      "Bash(npx tsc *)",
+      "Bash(\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --headless=new --disable-gpu --hide-scrollbars --window-size=500,1300 --force-prefers-color-scheme=light --blink-settings=preferredColorScheme=1 --screenshot=/private/tmp/claude-501/-Users-sanattudu-Work-JD---Resume-/28379dd7-b5d4-4c5d-bb74-cb38860ca68f/scratchpad/ui-500.png http://localhost:3000)",
+      "Bash(xargs kill)"
+    ]
+  }
+}

@@ -1,0 +1,692 @@
+{
+  "name": "Job-App",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "update-resume",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "3e2687dd-b11c-4c36-9203-14a7e9d3046d",
+      "name": "Frontend input",
+      "webhookId": "acbef742-9d51-4d52-bca0-c1bc5c9104b0"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "resume",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "bceca974-52f1-45c9-a472-84093a58cda4",
+      "name": "Extract data from pdf"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"Name\": \"John Doe\",\n  \"Address\": \"123 Main Street, New York, NY 10001\",\n  \"Email\": \"john.doe@example.com\",\n  \"Education\": [\n    {\n      \"Degree\": \"Bachelor of Technology in Computer Science\",\n      \"Institution\": \"XYZ University\",\n      \"Grade\": \"8.5 CGPA\",\n      \"Year\": 2022\n    },\n    {\n      \"Degree\": \"Higher Secondary (Class XII)\",\n      \"Institution\": \"ABC School\",\n      \"Grade\": \"92%\",\n      \"Year\": 2018\n    }\n  ]\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        608,
+        240
+      ],
+      "id": "3ad82864-20c2-4338-9294-df948398b1c6",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You will be provided with a resume in plain text format.\nYour job is to extract the following fields of information:\n\nName\n\nAddress\n\nEmail\n\nEducation – including:\n\n--Degree\n\n--Institution Name\n\n--Grades (e.g., GPA or percentage)\n\n--Passing Year\n\n\nHere is a resume in text format\n{{ $json.text }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a helpful assistant"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "464c44a4-5456-41f8-ae96-0c461371ddb1",
+      "name": "Personal Details Extract"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "49498680-e012-4e45-845f-d4ad56e8012d",
+              "name": "output.Name",
+              "value": "={{ $json.output.Name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        800,
+        0
+      ],
+      "id": "0ca04f8f-9875-4846-bfec-e54c29c87632",
+      "name": "Drive Details Set"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $json.output.Name }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "a5b5f7e5-33c8-4899-ac03-9d302478be2c",
+      "name": "Google Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "yCRFzWyMrPEU4ftK",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert technical resume writer. Rewrite the candidate's resume as a complete LaTeX (.tex) document tailored to the job below.\n\n**Job Title:** {{ $('Frontend input').item.json.body.jobTitle }}\n**Company Name:** {{ $('Frontend input').item.json.body.companyName }}\n**Job Description:**\n{{ $('Frontend input').item.json.body.jobDescription }}\n\n**Candidate's original resume (use only for facts, do not reuse phrasing):**\n{{ $('Extract data from pdf').item.json.text }}\n\n**Candidate's extracted personal details:**\nName: {{ $('Personal Details Extract').item.json.output.Name }}\nAddress: {{ $('Personal Details Extract').item.json.output.Address }}\nEmail: {{ $('Personal Details Extract').item.json.output.Email }}\nEducation: {{ JSON.stringify($('Personal Details Extract').item.json.output.Education) }}\n\n**Instructions:**\n- Use ONLY the LaTeX template below. Do not change the document structure, packages, or commands, only fill in and rewrite the placeholder content.\n- Escape LaTeX special characters (& % _ # $ {} ~ ^ \\) in any dynamic text you insert.\n- Tailor the Professional Summary, Skills, and Experience bullet points to the job title and description above, incorporating relevant keywords for ATS matching.\n- Do not add any commentary before or after the LaTeX document. Output must be valid, complete LaTeX source only, starting with \\documentclass and ending with \\end{document}.\n\n**Template:**\n\\documentclass[11pt,letterpaper]{article}\n\\usepackage[margin=0.75in]{geometry}\n\\usepackage{enumitem}\n\\usepackage{titlesec}\n\\usepackage{hyperref}\n\\pagestyle{empty}\n\n\\titleformat{\\section}{\\large\\bfseries}{}{0em}{}[\\titlerule]\n\\titlespacing{\\section}{0pt}{8pt}{4pt}\n\n\\begin{document}\n\n\\begin{center}\n{\\LARGE \\textbf{[Full Name]}} \\\\\n[Address] \\quad | \\quad [Email] \\quad | \\quad [Phone] \\quad | \\quad \\href{[LinkedIn URL]}{LinkedIn} \\quad | \\quad \\href{[GitHub URL]}{GitHub}\n\\end{center}\n\n\\section*{Professional Summary}\n[2-3 sentence summary tailored to the job]\n\n\\section*{Education}\n\\textbf{[Degree]} \\hfill [Year] \\\\\n[Institution], [Grade]\n\n\\section*{Experience}\n\\textbf{[Company Name]} -- [Job Title] \\hfill [Start] -- [End]\n\\begin{itemize}[leftmargin=*,itemsep=2pt]\n  \\item [Bullet 1]\n  \\item [Bullet 2]\n  \\item [Bullet 3]\n\\end{itemize}\n\n\\section*{Skills}\n\\begin{itemize}[leftmargin=*,itemsep=2pt]\n  \\item \\textbf{[Category]:} [skills]\n  \\item \\textbf{[Category]:} [skills]\n\\end{itemize}\n\n\\section*{Projects}\n\\textbf{[Project Title]}\n\\begin{itemize}[leftmargin=*,itemsep=2pt]\n  \\item [Description with tools and results]\n\\end{itemize}\n\n\\end{document}\n",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an expert technical resume writer who outputs only valid LaTeX source code."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "51ddb0a2-bc3b-4a3f-9d93-7df0d533ee76",
+      "name": "LaTeX Resume Agent"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"tex\": \"\\\\documentclass[11pt,letterpaper]{article}\\n...\\n\\\\end{document}\"\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1392,
+        240
+      ],
+      "id": "e70e064f-2c8d-4471-aa83-aa499e22928d",
+      "name": "Structured Output Parser2"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "output.tex",
+        "binaryPropertyName": "resumeTex",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1632,
+        480
+      ],
+      "id": "b5b9e81a-d020-459b-a333-871cb39f0bc0",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5a725c67-ba9a-47c0-93ea-511ca2d00e67",
+              "name": "fileName",
+              "value": "={{ $('Personal Details Extract').item.json.output.Name }} - {{ $('Frontend input').item.json.body.companyName }} - {{ $('Frontend input').item.json.body.jobTitle }} Resume.tex",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1856,
+        320
+      ],
+      "id": "47cf710f-c6ef-4ca3-91c4-35b5264f926f",
+      "name": "Build Filename"
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "=resumeTex",
+        "name": "=Personal/Personal/Resume/{{ $json.fileName }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Google Drive').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1984,
+        -32
+      ],
+      "id": "336802d2-d903-454d-9097-788800b58e86",
+      "name": "Google Drive: Upload File",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "yCRFzWyMrPEU4ftK",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "share",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2208,
+        -48
+      ],
+      "id": "5ac3dc83-22ad-4229-8876-e7da0813f764",
+      "name": "Google Drive: Share File",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "yCRFzWyMrPEU4ftK",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "43538388-0e41-4692-8b37-7794b34871f2",
+              "name": "webViewLink",
+              "value": "={{ $('Google Drive: Upload File').item.json.webViewLink }}",
+              "type": "string"
+            },
+            {
+              "id": "fe44562b-b154-48ab-902c-844f83f147d5",
+              "name": "webContentLink",
+              "value": "={{ $('Google Drive: Upload File').item.json.webContentLink }}",
+              "type": "string"
+            },
+            {
+              "id": "4ea7a8ea-c66d-4219-b4b5-bb4ac23f5de3",
+              "name": "overleafLink",
+              "value": "=https://www.overleaf.com/docs?snip_uri={{ encodeURIComponent($('Google Drive: Upload File').item.json.webContentLink) }}&snip_name=resume.tex",
+              "type": "string"
+            },
+            {
+              "id": "3f4e37b2-5c0a-4e42-954e-7cf4a5de845b",
+              "name": "companyName",
+              "value": "={{ $('Frontend input').item.json.body.companyName }}",
+              "type": "string"
+            },
+            {
+              "id": "1644e460-8e76-4bc7-8521-c9dc4da15f13",
+              "name": "jobTitle",
+              "value": "={{ $('Frontend input').item.json.body.jobTitle }}",
+              "type": "string"
+            },
+            {
+              "id": "d981fce1-9914-4748-ba0b-8cd1e82a052c",
+              "name": "jobUrl",
+              "value": "={{ $('Frontend input').item.json.body.jobUrl }}",
+              "type": "string"
+            },
+            {
+              "id": "5691a005-7b1c-4083-ac96-6b5f43735f5d",
+              "name": "name",
+              "value": "={{ $('Personal Details Extract').item.json.output.Name }}",
+              "type": "string"
+            },
+            {
+              "id": "ec02a3c8-2fe4-47d6-bdf5-8f858ba59ad9",
+              "name": "email",
+              "value": "={{ $('Personal Details Extract').item.json.output.Email }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2496,
+        0
+      ],
+      "id": "630fa4b6-d5a2-4986-b26b-5c6a55b681d1",
+      "name": "Build Overleaf Link"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1kTDb0guPurbAPoxkLb2Np-klRC841fimkvBw3VqcsDI",
+          "mode": "list",
+          "cachedResultName": "Job Applyer",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1kTDb0guPurbAPoxkLb2Np-klRC841fimkvBw3VqcsDI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1vCA1Y_8CtVjFkqUZXep_A3TGBlKH_plIDSf_Y4OKPP4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.name }}",
+            "Email": "={{ $json.email }}",
+            "Company Name": "={{ $json.companyName }}",
+            "Job Title": "={{ $json.jobTitle }}",
+            "Job URL": "={{ $json.jobUrl }}",
+            "Drive Link": "={{ $json.webViewLink }}",
+            "Overleaf Link": "={{ $json.overleafLink }}",
+            "Timestamp": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company Name",
+              "displayName": "Company Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Job Title",
+              "displayName": "Job Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Job URL",
+              "displayName": "Job URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Drive Link",
+              "displayName": "Drive Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Overleaf Link",
+              "displayName": "Overleaf Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        2720,
+        0
+      ],
+      "id": "6fc38f2d-614b-4c09-902d-0b1bb44c5396",
+      "name": "Google Sheets: Log Submission",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CsL4SOJkZli13hTH",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"driveLink\": $json.webViewLink, \"overleafLink\": $json.overleafLink } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2944,
+        0
+      ],
+      "id": "d3ea9eb0-0e0c-40fc-86bc-f7ba59e00e9c",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        208
+      ],
+      "id": "ab9cd783-dc48-4457-a0b0-ac0d12cee08c",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "TT6el8ymawv9A5oW",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1232,
+        224
+      ],
+      "id": "1b2f87c6-c86c-4001-a0f4-ef15c3f20f7d",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "TT6el8ymawv9A5oW",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Frontend input": {
+      "main": [
+        [
+          {
+            "node": "Extract data from pdf",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract data from pdf": {
+      "main": [
+        [
+          {
+            "node": "Personal Details Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Personal Details Extract",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personal Details Extract": {
+      "main": [
+        [
+          {
+            "node": "Drive Details Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Details Set": {
+      "main": [
+        [
+          {
+            "node": "Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive": {
+      "main": [
+        [
+          {
+            "node": "LaTeX Resume Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "LaTeX Resume Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LaTeX Resume Agent": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Build Filename",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Filename": {
+      "main": [
+        [
+          {
+            "node": "Google Drive: Upload File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive: Upload File": {
+      "main": [
+        [
+          {
+            "node": "Google Drive: Share File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive: Share File": {
+      "main": [
+        [
+          {
+            "node": "Build Overleaf Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Overleaf Link": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets: Log Submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets: Log Submission": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Personal Details Extract",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LaTeX Resume Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "06a6e1ed-ecae-4377-a774-968e418466bc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1807c36887424408e159f9644cd74b2e7b9bc2507295c11bc903e6b25beff1b2"
+  },
+  "nodeGroups": [],
+  "id": "QB1S1u6inZPmJRj5",
+  "tags": []
+}
