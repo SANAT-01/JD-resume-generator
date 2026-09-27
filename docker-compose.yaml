@@ -1,0 +1,25 @@
+services:
+  resume-updater:
+    build:
+      context: .
+    image: resume-updater:latest
+    container_name: resume-updater
+    ports:
+      - "${HOST_PORT:-24819}:3000"
+    restart: unless-stopped
+    environment:
+      # Server-side only — safe to inject at runtime, not baked into the build
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.resume-updater.rule=Host(`resume.sanattudu.tech`)"
+      - "traefik.http.routers.resume-updater.entrypoints=websecure"
+      - "traefik.http.routers.resume-updater.tls=true"
+      - "traefik.http.routers.resume-updater.tls.certresolver=letsencrypt"
+      - "traefik.http.services.resume-updater.loadbalancer.server.port=3000"
